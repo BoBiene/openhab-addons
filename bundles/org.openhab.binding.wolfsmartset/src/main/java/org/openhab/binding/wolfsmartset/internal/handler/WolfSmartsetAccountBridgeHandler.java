@@ -69,7 +69,7 @@ public class WolfSmartsetAccountBridgeHandler extends BaseBridgeHandler {
     private int refreshIntervalValuesSeconds;
     private boolean discoveryEnabled;
     private @Nullable List<GetSystemListDTO> cachedSystems = null;
-    
+
     private final Map<String, WolfSmartsetSystemBridgeHandler> systemHandlers = new ConcurrentHashMap<>();
     private final Set<String> systemIds = new CopyOnWriteArraySet<>();
 
@@ -159,7 +159,7 @@ public class WolfSmartsetAccountBridgeHandler extends BaseBridgeHandler {
     public @Nullable List<GetSystemListDTO> getRegisteredSystems() {
         return cachedSystems;
     }
-    
+
     /**
      * force a full update of the wolf smartset cloud configuration
      */
@@ -171,7 +171,7 @@ public class WolfSmartsetAccountBridgeHandler extends BaseBridgeHandler {
         refreshSystemsJob = scheduler.scheduleWithFixedDelay(this::refresh, REFRESH_STARTUP_DELAY_SECONDS,
                 REFRESH_INTERVAL_SECONDS, TimeUnit.SECONDS);
     }
-    
+
     /**
      * The refresh job updates the system channels on the refresh interval set in the system thing config.
      * The system update process involves first running a system summary transaction to
@@ -255,7 +255,7 @@ public class WolfSmartsetAccountBridgeHandler extends BaseBridgeHandler {
                                 systemHandler.updateSystemState(null);
                             }
                         }
-                    } 
+                    }
                 } else {
                     updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR, "Authorization failed");
                 }

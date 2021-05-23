@@ -113,6 +113,7 @@ public class WolfSmartsetUnitThingHandler extends BaseThingHandler {
 
     /**
      * get the SubMenuEntryDTO for this unit
+     * 
      * @return the SubMenuEntryDTO for this unit
      */
     public @Nullable SubMenuEntryDTO getSubMenu() {
@@ -121,6 +122,7 @@ public class WolfSmartsetUnitThingHandler extends BaseThingHandler {
 
     /**
      * get the MenuItemTabViewDTO for this unit
+     * 
      * @return the MenuItemTabViewDTO for this unit
      */
     public @Nullable MenuItemTabViewDTO getTabMenu() {
@@ -129,6 +131,7 @@ public class WolfSmartsetUnitThingHandler extends BaseThingHandler {
 
     /**
      * get the timstamp of the last valid call of updateValues
+     * 
      * @return the timstamp of the last valid call of updateValues
      */
     public @Nullable Instant getLastRefreshTime() {
@@ -137,6 +140,7 @@ public class WolfSmartsetUnitThingHandler extends BaseThingHandler {
 
     /**
      * Update the configuration of this unit and create / update the related channels
+     * 
      * @param submenu the SubMenuEntryDTO for this unit
      * @param tabmenu the MenuItemTabViewDTO for this unit
      */
@@ -171,6 +175,7 @@ public class WolfSmartsetUnitThingHandler extends BaseThingHandler {
 
     /**
      * update the values of the channels
+     * 
      * @param values
      */
     public void updateValues(@Nullable GetParameterValuesDTO values) {
@@ -193,7 +198,8 @@ public class WolfSmartsetUnitThingHandler extends BaseThingHandler {
 
     /**
      * stores the state for the channel in stateCache and calls updateState of this Thing
-     * @param channelId 
+     * 
+     * @param channelId
      * @param state
      */
     private void setState(ChannelUID channelId, State state) {

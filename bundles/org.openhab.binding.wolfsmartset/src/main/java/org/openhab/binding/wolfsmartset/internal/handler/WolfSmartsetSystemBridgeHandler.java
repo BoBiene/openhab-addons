@@ -17,7 +17,6 @@ import static org.openhab.binding.wolfsmartset.internal.WolfSmartsetBindingConst
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,7 +28,6 @@ import org.openhab.binding.wolfsmartset.internal.config.WolfSmartsetSystemConfig
 import org.openhab.binding.wolfsmartset.internal.discovery.WolfSmartsetSystemDiscoveryService;
 import org.openhab.binding.wolfsmartset.internal.dto.*;
 import org.openhab.core.thing.Bridge;
-import org.openhab.core.thing.Channel;
 import org.openhab.core.thing.ChannelUID;
 import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingStatus;
@@ -38,9 +36,6 @@ import org.openhab.core.thing.ThingStatusInfo;
 import org.openhab.core.thing.binding.BaseBridgeHandler;
 import org.openhab.core.thing.binding.ThingHandler;
 import org.openhab.core.thing.binding.ThingHandlerService;
-import org.openhab.core.thing.type.ChannelType;
-import org.openhab.core.thing.type.ChannelTypeRegistry;
-import org.openhab.core.thing.type.ChannelTypeUID;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.RefreshType;
 import org.openhab.core.types.State;
@@ -125,6 +120,7 @@ public class WolfSmartsetSystemBridgeHandler extends BaseBridgeHandler {
 
     /**
      * return the associated account bridge handler
+     * 
      * @return
      */
     public @Nullable WolfSmartsetAccountBridgeHandler getAccountBridgeHanlder() {
@@ -133,6 +129,7 @@ public class WolfSmartsetSystemBridgeHandler extends BaseBridgeHandler {
 
     /**
      * return the subordinated unit handler
+     * 
      * @return
      */
     public Collection<WolfSmartsetUnitThingHandler> getUnitHandler() {
@@ -141,6 +138,7 @@ public class WolfSmartsetSystemBridgeHandler extends BaseBridgeHandler {
 
     /**
      * returns the list configuration of the units available for this system
+     * 
      * @return
      */
     public List<Pair<SubMenuEntryDTO, MenuItemTabViewDTO>> getUnits() {
@@ -150,14 +148,16 @@ public class WolfSmartsetSystemBridgeHandler extends BaseBridgeHandler {
 
     /**
      * return the configuration of this system
+     * 
      * @return
      */
     public @Nullable GetSystemListDTO getSystemConfig() {
         return savedSystem;
     }
-    
+
     /**
      * return the id of this system
+     * 
      * @return
      */
     public String getSystemId() {
@@ -166,6 +166,7 @@ public class WolfSmartsetSystemBridgeHandler extends BaseBridgeHandler {
 
     /**
      * update the system state with the dto
+     * 
      * @param systemState
      */
     public void updateSystemState(@Nullable GetSystemStateListDTO systemState) {
@@ -184,6 +185,7 @@ public class WolfSmartsetSystemBridgeHandler extends BaseBridgeHandler {
 
     /**
      * process the available fault messages
+     * 
      * @param faultMessages
      */
     public void updateFaultMessages(@Nullable ReadFaultMessagesDTO faultMessages) {
@@ -199,6 +201,7 @@ public class WolfSmartsetSystemBridgeHandler extends BaseBridgeHandler {
 
     /**
      * Update the configuration of the system and the subordinated units
+     * 
      * @param system
      * @param systemDescription
      */
@@ -244,7 +247,7 @@ public class WolfSmartsetSystemBridgeHandler extends BaseBridgeHandler {
                 }
             }
 
-        } 
+        }
         savedUnits = listUnits;
     }
 

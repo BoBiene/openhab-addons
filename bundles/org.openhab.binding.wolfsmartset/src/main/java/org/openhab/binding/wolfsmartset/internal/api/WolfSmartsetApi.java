@@ -12,9 +12,6 @@
  */
 package org.openhab.binding.wolfsmartset.internal.api;
 
-import java.net.CookieStore;
-import java.net.HttpCookie;
-import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -26,7 +23,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Random;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -96,7 +92,8 @@ public class WolfSmartsetApi {
     }
 
     /**
-     * Validate Login to wolf smartset. Returns true if valid token is available, otherwise tries to authenticate with wolf smartset portal
+     * Validate Login to wolf smartset. Returns true if valid token is available, otherwise tries to authenticate with
+     * wolf smartset portal
      */
     public synchronized boolean login() {
         if (!checkCredentials()) {
@@ -137,7 +134,8 @@ public class WolfSmartsetApi {
 
     /**
      * Request the systems available for the authenticated account
-     * @return 
+     * 
+     * @return
      */
     public List<GetSystemListDTO> getSystems() {
         final String response = getSystemString();
@@ -158,6 +156,7 @@ public class WolfSmartsetApi {
 
     /**
      * Request the description of the given system
+     * 
      * @param systemId
      * @param gatewayId
      * @return
@@ -176,6 +175,7 @@ public class WolfSmartsetApi {
 
     /**
      * Request the system state of the given systems
+     * 
      * @param systems
      * @return
      */
@@ -196,6 +196,7 @@ public class WolfSmartsetApi {
 
     /**
      * Request the fault messages of the given system
+     * 
      * @param systemId
      * @param gatewayId
      * @return
@@ -211,10 +212,11 @@ public class WolfSmartsetApi {
         }
         return faultMessages;
     }
-    
+
     /**
      * request the current values for a unit associated with the given system.
      * if lastAccess is not null, only value changes newer than the given timestamp are returned
+     * 
      * @param systemId
      * @param gatewayId
      * @param bundleId the id of the Unit
@@ -283,7 +285,7 @@ public class WolfSmartsetApi {
     private String getApiUrl() {
         return "https://www.wolf-smartset.com/portal/";
     }
- 
+
     private String getCreateSessionString() {
         String resp = "";
         try {
@@ -384,7 +386,7 @@ public class WolfSmartsetApi {
         }
         return resp;
     }
-   
+
     private String getGetParameterValuesString(Integer systemId, Integer gatewayId, Long bundleId,
             List<Long> valueIdList, @Nullable Instant lastAccess) {
         String resp = "";
