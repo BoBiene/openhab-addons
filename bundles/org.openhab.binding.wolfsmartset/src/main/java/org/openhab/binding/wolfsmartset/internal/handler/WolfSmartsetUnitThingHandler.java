@@ -72,18 +72,6 @@ public class WolfSmartsetUnitThingHandler extends BaseThingHandler {
         super(thing);
     }
 
-    public @Nullable SubMenuEntryDTO getSubMenu() {
-        return this.submenu;
-    }
-
-    public @Nullable MenuItemTabViewDTO getTabMenu() {
-        return this.tabmenu;
-    }
-
-    public @Nullable Instant getLastRefreshTime() {
-        return this.lastRefreshTime;
-    }
-
     @Override
     public void initialize() {
         unitId = getConfigAs(WolfSmartsetUnitConfiguration.class).unitId;
@@ -111,6 +99,47 @@ public class WolfSmartsetUnitThingHandler extends BaseThingHandler {
         }
     }
 
+    @SuppressWarnings("null")
+    @Override
+    public void handleCommand(ChannelUID channelUID, Command command) {
+        if (command instanceof RefreshType) {
+            State state = stateCache.get(channelUID.getId());
+            if (state != null) {
+                updateState(channelUID.getId(), state);
+            }
+            return;
+        }
+    }
+
+    /**
+     * get the SubMenuEntryDTO for this unit
+     * @return the SubMenuEntryDTO for this unit
+     */
+    public @Nullable SubMenuEntryDTO getSubMenu() {
+        return this.submenu;
+    }
+
+    /**
+     * get the MenuItemTabViewDTO for this unit
+     * @return the MenuItemTabViewDTO for this unit
+     */
+    public @Nullable MenuItemTabViewDTO getTabMenu() {
+        return this.tabmenu;
+    }
+
+    /**
+     * get the timstamp of the last valid call of updateValues
+     * @return the timstamp of the last valid call of updateValues
+     */
+    public @Nullable Instant getLastRefreshTime() {
+        return this.lastRefreshTime;
+    }
+
+    /**
+     * Update the configuration of this unit and create / update the related channels
+     * @param submenu the SubMenuEntryDTO for this unit
+     * @param tabmenu the MenuItemTabViewDTO for this unit
+     */
     public void updateConfiguration(SubMenuEntryDTO submenu, MenuItemTabViewDTO tabmenu) {
         this.submenu = submenu;
         this.tabmenu = tabmenu;
@@ -140,6 +169,33 @@ public class WolfSmartsetUnitThingHandler extends BaseThingHandler {
         }
     }
 
+    /**
+     * update the values of the channels
+     * @param values
+     */
+    public void updateValues(@Nullable GetParameterValuesDTO values) {
+        var thingId = thing.getUID();
+        if (values != null && values.getValues() != null && values.getValues().size() > 0) {
+            if (!values.getIsNewJobCreated())
+                lastRefreshTime = Instant.now();
+
+            for (var value : values.getValues()) {
+                var param = paramDescriptionMap.get(value.getValueId());
+                if (param != null) {
+                    var channelId = new ChannelUID(thingId, param.ParameterId.toString());
+                    setState(channelId, WolfSmartsetUtils.undefOrString(value.getValue()));
+                }
+            }
+        } else {
+
+        }
+    }
+
+    /**
+     * stores the state for the channel in stateCache and calls updateState of this Thing
+     * @param channelId 
+     * @param state
+     */
     private void setState(ChannelUID channelId, State state) {
         stateCache.put(channelId.getId(), state);
         updateState(channelId, state);
@@ -195,36 +251,6 @@ public class WolfSmartsetUnitThingHandler extends BaseThingHandler {
                 return "DateTime";
             default:
                 return "String";
-        }
-    }
-
-    public void updateValues(@Nullable GetParameterValuesDTO values) {
-        var thingId = thing.getUID();
-        if (values != null && values.getValues() != null && values.getValues().size() > 0) {
-            if (!values.getIsNewJobCreated())
-                lastRefreshTime = Instant.now();
-
-            for (var value : values.getValues()) {
-                var param = paramDescriptionMap.get(value.getValueId());
-                if (param != null) {
-                    var channelId = new ChannelUID(thingId, param.ParameterId.toString());
-                    setState(channelId, WolfSmartsetUtils.undefOrString(value.getValue()));
-                }
-            }
-        } else {
-
-        }
-    }
-
-    @SuppressWarnings("null")
-    @Override
-    public void handleCommand(ChannelUID channelUID, Command command) {
-        if (command instanceof RefreshType) {
-            State state = stateCache.get(channelUID.getId());
-            if (state != null) {
-                updateState(channelUID.getId(), state);
-            }
-            return;
         }
     }
 

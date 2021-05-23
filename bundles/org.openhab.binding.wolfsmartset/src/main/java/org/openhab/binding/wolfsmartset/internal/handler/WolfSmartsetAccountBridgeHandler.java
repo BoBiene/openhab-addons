@@ -68,7 +68,8 @@ public class WolfSmartsetAccountBridgeHandler extends BaseBridgeHandler {
     private int refreshIntervalConfigurationMinutes;
     private int refreshIntervalValuesSeconds;
     private boolean discoveryEnabled;
-
+    private @Nullable List<GetSystemListDTO> cachedSystems = null;
+    
     private final Map<String, WolfSmartsetSystemBridgeHandler> systemHandlers = new ConcurrentHashMap<>();
     private final Set<String> systemIds = new CopyOnWriteArraySet<>();
 
@@ -115,16 +116,17 @@ public class WolfSmartsetAccountBridgeHandler extends BaseBridgeHandler {
     @Override
     public void dispose() {
         cancelRefreshJob();
+        api.stopClient();
         logger.debug("AccountBridge: Disposing");
-    }
-
-    @Override
-    public void handleCommand(ChannelUID channelUID, Command command) {
     }
 
     @Override
     public Collection<Class<? extends ThingHandlerService>> getServices() {
         return Collections.singleton(WolfSmartsetAccountDiscoveryService.class);
+    }
+
+    @Override
+    public void handleCommand(ChannelUID channelUID, Command command) {
     }
 
     @Override
@@ -144,27 +146,33 @@ public class WolfSmartsetAccountBridgeHandler extends BaseBridgeHandler {
         logger.debug("AccountBridge: Removing system handler for {} with id {}", systemThing.getUID(), systemId);
     }
 
+    /**
+     * returns truee if BackgroundDiscoveryEnabled
+     */
     public boolean isBackgroundDiscoveryEnabled() {
         return discoveryEnabled;
     }
 
-    public void updateBridgeStatus(ThingStatus status) {
-        updateStatus(status);
+    /**
+     * returns the list of the GetSystemListDTO available
+     */
+    public @Nullable List<GetSystemListDTO> getRegisteredSystems() {
+        return cachedSystems;
     }
-
-    public void updateBridgeStatus(ThingStatus status, ThingStatusDetail statusDetail, String statusMessage) {
-        updateStatus(status, statusDetail, statusMessage);
+    
+    /**
+     * force a full update of the wolf smartset cloud configuration
+     */
+    public void scheduleRefreshJob() {
+        logger.debug("AccountBridge: Scheduling system refresh job");
+        cancelRefreshJob();
+        refreshConfigurationCounter.set(0);
+        refreshValuesCounter.set(0);
+        refreshSystemsJob = scheduler.scheduleWithFixedDelay(this::refresh, REFRESH_STARTUP_DELAY_SECONDS,
+                REFRESH_INTERVAL_SECONDS, TimeUnit.SECONDS);
     }
-
-    public void markOnline() {
-        updateStatus(ThingStatus.ONLINE);
-    }
-
-    public List<GetSystemListDTO> getRegisteredSystems() {
-        return api.getSystems();
-    }
-
-    /*
+    
+    /**
      * The refresh job updates the system channels on the refresh interval set in the system thing config.
      * The system update process involves first running a system summary transaction to
      * determine if any system data has changed since the last summary. If any change is detected,
@@ -182,13 +190,15 @@ public class WolfSmartsetAccountBridgeHandler extends BaseBridgeHandler {
                 if (api.login()) {
                     logger.info("AccountBridge: refreshing configuration");
                     updateStatus(ThingStatus.ONLINE);
-                    for (GetSystemListDTO system : api.getSystems()) {
-                        WolfSmartsetSystemBridgeHandler handler = systemHandlers.get(system.getId().toString());
-                        if (handler != null) {
-
-                            GetGuiDescriptionForGatewayDTO systemDescription = api.getSystemDescription(system.getId(),
-                                    system.getGatewayId());
-                            handler.updateConfiguration(system, systemDescription);
+                    cachedSystems = api.getSystems();
+                    if (cachedSystems != null) {
+                        for (GetSystemListDTO system : api.getSystems()) {
+                            WolfSmartsetSystemBridgeHandler handler = systemHandlers.get(system.getId().toString());
+                            if (handler != null) {
+                                GetGuiDescriptionForGatewayDTO systemDescription = api
+                                        .getSystemDescription(system.getId(), system.getGatewayId());
+                                handler.updateConfiguration(system, systemDescription);
+                            }
                         }
                     }
                 } else {
@@ -245,11 +255,7 @@ public class WolfSmartsetAccountBridgeHandler extends BaseBridgeHandler {
                                 systemHandler.updateSystemState(null);
                             }
                         }
-
-                    } else {
-                        // no systems
-                    }
-
+                    } 
                 } else {
                     updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR, "Authorization failed");
                 }
@@ -258,15 +264,6 @@ public class WolfSmartsetAccountBridgeHandler extends BaseBridgeHandler {
             updateStatus(ThingStatus.UNKNOWN, ThingStatusDetail.COMMUNICATION_ERROR, "Error updating things");
             logger.error("Error updating things {}", e);
         }
-    }
-
-    public void scheduleRefreshJob() {
-        logger.debug("AccountBridge: Scheduling system refresh job");
-        cancelRefreshJob();
-        refreshConfigurationCounter.set(0);
-        refreshValuesCounter.set(0);
-        refreshSystemsJob = scheduler.scheduleWithFixedDelay(this::refresh, REFRESH_STARTUP_DELAY_SECONDS,
-                REFRESH_INTERVAL_SECONDS, TimeUnit.SECONDS);
     }
 
     private void cancelRefreshJob() {

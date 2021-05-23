@@ -42,14 +42,10 @@ import org.osgi.service.component.annotations.Reference;
 @NonNullByDefault
 @Component(configurationPid = "binding.wolfsmartset", service = ThingHandlerFactory.class)
 public class WolfSmartsetHandlerFactory extends BaseThingHandlerFactory {
-
-    private final ChannelTypeRegistry channelTypeRegistry;
     private final HttpClient httpClient;
 
     @Activate
-    public WolfSmartsetHandlerFactory(@Reference ChannelTypeRegistry channelTypeRegistry,
-            @Reference OAuthFactory oAuthFactory, @Reference HttpClientFactory httpClientFactory) {
-        this.channelTypeRegistry = channelTypeRegistry;
+    public WolfSmartsetHandlerFactory(@Reference HttpClientFactory httpClientFactory) {
         this.httpClient = httpClientFactory.getCommonHttpClient();
     }
 
@@ -66,7 +62,7 @@ public class WolfSmartsetHandlerFactory extends BaseThingHandlerFactory {
             return new WolfSmartsetAccountBridgeHandler((Bridge) thing, httpClient);
         }
         if (SUPPORTED_SYSTEM_BRIDGE_THING_TYPES_UIDS.contains(thingTypeUID)) {
-            return new WolfSmartsetSystemBridgeHandler((Bridge) thing, channelTypeRegistry);
+            return new WolfSmartsetSystemBridgeHandler((Bridge) thing);
         }
         if (SUPPORTED_UNIT_THING_TYPES_UIDS.contains(thingTypeUID)) {
             return new WolfSmartsetUnitThingHandler(thing);

@@ -57,8 +57,6 @@ public class WolfSmartsetSystemBridgeHandler extends BaseBridgeHandler {
 
     private final Logger logger = LoggerFactory.getLogger(WolfSmartsetSystemBridgeHandler.class);
 
-    private ChannelTypeRegistry channelTypeRegistry;
-
     private @NonNullByDefault({}) String systemId;
 
     private final Map<String, WolfSmartsetUnitThingHandler> unitHandlers = new ConcurrentHashMap<>();
@@ -66,23 +64,15 @@ public class WolfSmartsetSystemBridgeHandler extends BaseBridgeHandler {
     private @Nullable GetSystemListDTO savedSystem;
     private @Nullable List<Pair<SubMenuEntryDTO, MenuItemTabViewDTO>> savedUnits;
     private Map<String, State> stateCache = new ConcurrentHashMap<>();
-    private Map<ChannelUID, Boolean> channelReadOnlyMap = new HashMap<>();
 
-    public WolfSmartsetSystemBridgeHandler(Bridge bridge, ChannelTypeRegistry channelTypeRegistry) {
+    public WolfSmartsetSystemBridgeHandler(Bridge bridge) {
         super(bridge);
-        this.channelTypeRegistry = channelTypeRegistry;
-        updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_PENDING, "Waiting for first api sync");
-    }
-
-    public @Nullable WolfSmartsetAccountBridgeHandler getAccountBridgeHanlder() {
-        return (WolfSmartsetAccountBridgeHandler) this.getBridge().getHandler();
     }
 
     @Override
     public void initialize() {
         systemId = getConfigAs(WolfSmartsetSystemConfiguration.class).systemId;
         logger.debug("SystemBridge: Initializing system '{}'", systemId);
-        initializeReadOnlyChannels();
         clearSavedState();
         updateStatus(WolfSmartsetUtils.isBridgeOnline(getBridge()) ? ThingStatus.ONLINE : ThingStatus.OFFLINE);
     }
@@ -130,31 +120,88 @@ public class WolfSmartsetSystemBridgeHandler extends BaseBridgeHandler {
             if (state != null) {
                 updateState(channelUID.getId(), state);
             }
-            return;
-        }
-        if (isChannelReadOnly(channelUID)) {
-            logger.debug("Can't apply command '{}' to '{}' because channel is readonly", command, channelUID.getId());
-            return;
         }
     }
 
+    /**
+     * return the associated account bridge handler
+     * @return
+     */
+    public @Nullable WolfSmartsetAccountBridgeHandler getAccountBridgeHanlder() {
+        return (WolfSmartsetAccountBridgeHandler) this.getBridge().getHandler();
+    }
+
+    /**
+     * return the subordinated unit handler
+     * @return
+     */
     public Collection<WolfSmartsetUnitThingHandler> getUnitHandler() {
         return unitHandlers.values();
     }
 
+    /**
+     * returns the list configuration of the units available for this system
+     * @return
+     */
     public List<Pair<SubMenuEntryDTO, MenuItemTabViewDTO>> getUnits() {
         List<Pair<SubMenuEntryDTO, MenuItemTabViewDTO>> localSavedUnits = savedUnits;
         return localSavedUnits == null ? EMPTY_UNITS : localSavedUnits;
     }
 
+    /**
+     * return the configuration of this system
+     * @return
+     */
     public @Nullable GetSystemListDTO getSystemConfig() {
         return savedSystem;
     }
-
+    
+    /**
+     * return the id of this system
+     * @return
+     */
     public String getSystemId() {
         return systemId;
     }
 
+    /**
+     * update the system state with the dto
+     * @param systemState
+     */
+    public void updateSystemState(@Nullable GetSystemStateListDTO systemState) {
+        if (systemState != null) {
+            if (systemState.getIsSystemDeleted()) {
+                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR, "System has been deleted");
+            } else if (systemState.getIsSystemShareDeleted()) {
+                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
+                        "System share has been removed");
+            } else if (systemState.getIsSystemShareRejected()) {
+                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
+                        "System share has been rejected");
+            }
+        }
+    }
+
+    /**
+     * process the available fault messages
+     * @param faultMessages
+     */
+    public void updateFaultMessages(@Nullable ReadFaultMessagesDTO faultMessages) {
+        if (faultMessages != null) {
+            if (faultMessages.getCurrentMessages() != null) {
+                for (var message : faultMessages.getCurrentMessages()) {
+                    logger.warn("System {} faultmessage: {}, since {}", systemId, message.getDescription(),
+                            message.getOccurTimeLocal());
+                }
+            }
+        }
+    }
+
+    /**
+     * Update the configuration of the system and the subordinated units
+     * @param system
+     * @param systemDescription
+     */
     public void updateConfiguration(@Nullable GetSystemListDTO system,
             @Nullable GetGuiDescriptionForGatewayDTO systemDescription) {
         if (system != null && systemDescription != null) {
@@ -174,7 +221,6 @@ public class WolfSmartsetSystemBridgeHandler extends BaseBridgeHandler {
             updateProperties(properties);
 
             updateUnitsConfiguration(systemDescription);
-            updateEquipmentStatus(system);
         } else {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
                     "Unable to retrieve configuration");
@@ -198,20 +244,8 @@ public class WolfSmartsetSystemBridgeHandler extends BaseBridgeHandler {
                 }
             }
 
-        } else {
-        }
+        } 
         savedUnits = listUnits;
-    }
-
-    public void updateSystemState(@Nullable GetSystemStateListDTO systemState) {
-    }
-
-    public void updateFaultMessages(@Nullable ReadFaultMessagesDTO faultMessages) {
-    }
-
-    private void updateEquipmentStatus(GetSystemListDTO system) {
-        // final String grp = CHGRP_EQUIPMENT_STATUS + "#";
-        // updateChannel(grp + CH_EQUIPMENT_STATUS, WolfSmartsetUtils.undefOrString(system.equipmentStatus));
     }
 
     private @Nullable WolfSmartsetAccountBridgeHandler getBridgeHandler() {
@@ -223,28 +257,9 @@ public class WolfSmartsetSystemBridgeHandler extends BaseBridgeHandler {
         return handler;
     }
 
-    @SuppressWarnings("null")
-    private boolean isChannelReadOnly(ChannelUID channelUID) {
-        Boolean isReadOnly = channelReadOnlyMap.get(channelUID);
-        return isReadOnly != null ? isReadOnly : true;
-    }
-
     private void clearSavedState() {
         savedSystem = null;
         savedUnits = null;
         stateCache.clear();
-    }
-
-    private void initializeReadOnlyChannels() {
-        channelReadOnlyMap.clear();
-        for (Channel channel : thing.getChannels()) {
-            ChannelTypeUID channelTypeUID = channel.getChannelTypeUID();
-            if (channelTypeUID != null) {
-                ChannelType channelType = channelTypeRegistry.getChannelType(channelTypeUID, null);
-                if (channelType != null) {
-                    channelReadOnlyMap.putIfAbsent(channel.getUID(), channelType.getState().isReadOnly());
-                }
-            }
-        }
     }
 }
