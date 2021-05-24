@@ -17,6 +17,11 @@ import javax.annotation.Generated;
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 
+/**
+ * generated with https://www.jsonschema2pojo.org/
+ * 
+ * @author Bo Biene - Initial contribution
+ */
 @Generated("jsonschema2pojo")
 public class LoginResponseDTO {
 

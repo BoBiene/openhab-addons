@@ -33,7 +33,8 @@ import org.openhab.binding.wolfsmartset.internal.api.WolfSmartsetApi;
 import org.openhab.binding.wolfsmartset.internal.api.WolfSmartsetCloudException;
 import org.openhab.binding.wolfsmartset.internal.config.WolfSmartsetAccountConfiguration;
 import org.openhab.binding.wolfsmartset.internal.discovery.WolfSmartsetAccountDiscoveryService;
-import org.openhab.binding.wolfsmartset.internal.dto.*;
+import org.openhab.binding.wolfsmartset.internal.dto.GetGuiDescriptionForGatewayDTO;
+import org.openhab.binding.wolfsmartset.internal.dto.GetSystemListDTO;
 import org.openhab.core.thing.Bridge;
 import org.openhab.core.thing.ChannelUID;
 import org.openhab.core.thing.Thing;
@@ -110,6 +111,7 @@ public class WolfSmartsetAccountBridgeHandler extends BaseBridgeHandler {
             scheduleRefreshJob();
         } catch (WolfSmartsetCloudException e) {
             logger.error("unbale to create wolf smartset api {}", e);
+            updateStatus(ThingStatus.UNINITIALIZED, ThingStatusDetail.CONFIGURATION_ERROR, e.getMessage());
         }
     }
 
@@ -183,87 +185,84 @@ public class WolfSmartsetAccountBridgeHandler extends BaseBridgeHandler {
     }
 
     private void refreshSystems() {
-        try {
-            if (refreshConfigurationCounter.getAndDecrement() == 0) {
-
-                refreshConfigurationCounter.set(refreshIntervalConfigurationMinutes * 60);
-                if (api.login()) {
-                    logger.info("AccountBridge: refreshing configuration");
-                    updateStatus(ThingStatus.ONLINE);
-                    cachedSystems = api.getSystems();
-                    if (cachedSystems != null) {
-                        for (GetSystemListDTO system : api.getSystems()) {
-                            WolfSmartsetSystemBridgeHandler handler = systemHandlers.get(system.getId().toString());
-                            if (handler != null) {
-                                GetGuiDescriptionForGatewayDTO systemDescription = api
-                                        .getSystemDescription(system.getId(), system.getGatewayId());
-                                handler.updateConfiguration(system, systemDescription);
-                            }
+        if (refreshConfigurationCounter.getAndDecrement() == 0) {
+            refreshConfigurationCounter.set(refreshIntervalConfigurationMinutes * 60);
+            if (api.login()) {
+                logger.info("AccountBridge: refreshing configuration");
+                updateStatus(ThingStatus.ONLINE);
+                cachedSystems = api.getSystems();
+                if (cachedSystems != null) {
+                    for (GetSystemListDTO system : api.getSystems()) {
+                        WolfSmartsetSystemBridgeHandler handler = systemHandlers.get(system.getId().toString());
+                        if (handler != null) {
+                            GetGuiDescriptionForGatewayDTO systemDescription = api.getSystemDescription(system.getId(),
+                                    system.getGatewayId());
+                            handler.updateConfiguration(system, systemDescription);
                         }
                     }
-                } else {
-                    updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR, "Authorization failed");
                 }
+            } else {
+                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR, "Authorization failed");
             }
+        }
 
-            if (refreshValuesCounter.getAndDecrement() == 0) {
-                refreshValuesCounter.set(refreshIntervalValuesSeconds);
-                if (api.login()) {
-                    logger.info("AccountBridge: refreshing values");
-                    updateStatus(ThingStatus.ONLINE);
+        if (refreshValuesCounter.getAndDecrement() == 0) {
+            refreshValuesCounter.set(refreshIntervalValuesSeconds);
+            if (api.login()) {
+                logger.info("AccountBridge: refreshing values");
+                updateStatus(ThingStatus.ONLINE);
 
-                    var systemConfigs = systemHandlers.values().stream().map(s -> s.getSystemConfig())
-                            .filter(s -> s != null).collect(Collectors.toSet());
-                    if (systemConfigs != null && systemConfigs.size() > 0) {
-                        var systemStates = api.getSystemState(systemConfigs);
-                        if (systemStates != null) {
-                            for (var systemState : systemStates) {
-                                var systemHandler = systemHandlers.get(systemState.getSystemId().toString());
-                                if (systemHandler != null) {
-                                    systemHandler.updateSystemState(systemState);
+                var systemConfigs = systemHandlers.values().stream().map(s -> s.getSystemConfig())
+                        .filter(s -> s != null).collect(Collectors.toSet());
+                if (systemConfigs != null && systemConfigs.size() > 0) {
+                    var systemStates = api.getSystemState(systemConfigs);
+                    if (systemStates != null) {
+                        for (var systemState : systemStates) {
+                            var systemHandler = systemHandlers.get(systemState.getSystemId().toString());
+                            if (systemHandler != null) {
+                                systemHandler.updateSystemState(systemState);
+                            }
+                        }
+                    } else {
+                        updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
+                                "Failed to update system states");
+                    }
+
+                    for (var systemHandler : systemHandlers.values()) {
+                        var systemConfig = systemHandler.getSystemConfig();
+
+                        if (systemConfig != null) {
+                            var faultMessages = api.getFaultMessages(systemConfig.getId(), systemConfig.getGatewayId());
+
+                            systemHandler.updateFaultMessages(faultMessages);
+
+                            for (var unitHandler : systemHandler.getUnitHandler()) {
+                                var tabmenu = unitHandler.getTabMenu();
+                                if (tabmenu != null) {
+                                    var lastRefreshTime = unitHandler.getLastRefreshTime();
+                                    var valueIds = tabmenu.ParameterDescriptors.stream().filter(p -> p.ValueId > 0)
+                                            .map(p -> p.ValueId).collect(Collectors.toList());
+                                    var paramValues = api.getGetParameterValues(systemConfig.getId(),
+                                            systemConfig.getGatewayId(), tabmenu.BundleId, valueIds, lastRefreshTime);
+
+                                    unitHandler.updateValues(paramValues);
                                 }
                             }
                         } else {
-                            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
-                                    "Failed to update system states");
-                        }
-
-                        for (var systemHandler : systemHandlers.values()) {
-                            var systemConfig = systemHandler.getSystemConfig();
-
-                            if (systemConfig != null) {
-                                var faultMessages = api.getFaultMessages(systemConfig.getId(),
-                                        systemConfig.getGatewayId());
-
-                                systemHandler.updateFaultMessages(faultMessages);
-
-                                for (var unitHandler : systemHandler.getUnitHandler()) {
-                                    var tabmenu = unitHandler.getTabMenu();
-                                    if (tabmenu != null) {
-                                        var lastRefreshTime = unitHandler.getLastRefreshTime();
-                                        var valueIds = tabmenu.ParameterDescriptors.stream().filter(p -> p.ValueId > 0)
-                                                .map(p -> p.ValueId).collect(Collectors.toList());
-                                        var paramValues = api.getGetParameterValues(systemConfig.getId(),
-                                                systemConfig.getGatewayId(), tabmenu.BundleId, valueIds,
-                                                lastRefreshTime);
-
-                                        unitHandler.updateValues(paramValues);
-                                    }
-                                }
-                            } else {
-                                // waiting for config.
-                                systemHandler.updateSystemState(null);
-                            }
+                            // waiting for config.
+                            systemHandler.updateSystemState(null);
                         }
                     }
-                } else {
-                    updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR, "Authorization failed");
                 }
+            } else {
+                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR, "Authorization failed");
             }
-        } catch (Throwable e) {
-            updateStatus(ThingStatus.UNKNOWN, ThingStatusDetail.COMMUNICATION_ERROR, "Error updating things");
-            logger.error("Error updating things {}", e);
         }
+        // } catch (WolfSmartsetCloudException e) {
+        // updateStatus(ThingStatus.UNKNOWN, ThingStatusDetail.COMMUNICATION_ERROR, "Error updating things: " +
+        // e.getMessage());
+        // logger.error("Error updating things {}", e);
+        // }
     }
 
     private void cancelRefreshJob() {

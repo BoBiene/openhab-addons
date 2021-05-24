@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.binding.wolfsmartset.internal.dto.*;
+import org.openhab.binding.wolfsmartset.internal.dto.GetSystemListDTO;
 import org.openhab.binding.wolfsmartset.internal.handler.WolfSmartsetAccountBridgeHandler;
 import org.openhab.core.config.discovery.AbstractDiscoveryService;
 import org.openhab.core.config.discovery.DiscoveryResult;

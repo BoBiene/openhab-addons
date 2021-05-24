@@ -43,7 +43,13 @@ import org.eclipse.jetty.client.util.StringContentProvider;
 import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.http.HttpMethod;
 import org.eclipse.jetty.http.HttpStatus;
-import org.openhab.binding.wolfsmartset.internal.dto.*;
+import org.openhab.binding.wolfsmartset.internal.dto.CreateSession2DTO;
+import org.openhab.binding.wolfsmartset.internal.dto.GetGuiDescriptionForGatewayDTO;
+import org.openhab.binding.wolfsmartset.internal.dto.GetParameterValuesDTO;
+import org.openhab.binding.wolfsmartset.internal.dto.GetSystemListDTO;
+import org.openhab.binding.wolfsmartset.internal.dto.GetSystemStateListDTO;
+import org.openhab.binding.wolfsmartset.internal.dto.LoginResponseDTO;
+import org.openhab.binding.wolfsmartset.internal.dto.ReadFaultMessagesDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
