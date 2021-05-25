@@ -614,7 +614,7 @@ public class WolfSmartsetApi {
             try {
                 String response = getResponse.get(this.buildRequest.get());
                 future.complete(response);
-            } catch (Throwable e) {
+            } catch (WolfSmartsetCloudException e) {
                 future.completeExceptionally(e);
             }
         }
